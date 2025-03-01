@@ -1,0 +1,345 @@
+# Software Board Universal Protocol V13
+
+## Table of Contents
+
+1. [Physical Interface](#physical-interface)
+2. [Frame Structure](#frame-structure)
+3. [Command Explanation](#command-explanation)
+   - [Basic Information 0x03 Command](#basic-information-0x03-command)
+   - [Cell Voltage 0x04 Command](#cell-voltage-0x04-command)
+   - [Hardware Version 0x05 Command](#hardware-version-0x05-command)
+   - [Protection Statistics Count](#protection-statistics-count)
+4. [Control MOS Command (0xFB)](#control-mos-command-0xfb)
+5. [Parameter Read and Write Mode (0xFA)](#parameter-read-and-write-mode-0xfa)
+6. [Control Command Explanation](#control-command-explanation)
+   - [Control Command (0x0A Command)](#control-command-0x0a-command)
+   - [Clear Historical Data (0x0B Command)](#clear-historical-data-0x0b-command)
+   - [Enter Factory Password Command (0x0F Command, default is 0x5678)](#enter-factory-password-command-0x0f-command)
+7. [Add Battery Internal Resistance Command (0xF6) - Not Yet Implemented](#add-battery-internal-resistance-command-0xf6)
+8. [Bluetooth Password Protocol](#bluetooth-password-protocol)
+9. [Chip Type Read Command](#chip-type-read-command)
+10. [Control Heating Command (0xFC)](#control-heating-command-0xfc)
+11. [Practical Example Analysis](#practical-example-analysis)
+12. [Revision History](#revision-history)
+
+---
+
+## 1. Physical Interface
+
+This protocol supports the universal protocol for Jiabaida software boards with RS485/RS232/UART interfaces, consistent with the host computer protocol. The baud rate is 9600 BPS or other custom rates specified by the customer. All 16-bit data is in big-endian mode, with the high byte first and the low byte last. (Note: There are example explanations at the end of the protocol.)
+
+Since the protection board has a sleep mode, the first data packet cannot be responded to during sleep. It needs to be sent again.
+
+---
+
+## 2. Frame Structure
+
+### Host Sends Command:
+
+| Start | Read | Command | Length | Data Content | Checksum | Stop | CALLBACK_ACK_ID |
+|-------|------|---------|--------|--------------|----------|------|-----------------|
+| 0xDD  | 0xA5 | Command | Length | Data         | Checksum | 0x77 | Callback ID     |
+
+### BMS Response:
+
+| Start | Command | Status | Length | Data Content | Checksum | Stop | CALLBACK_ID |
+|-------|---------|--------|--------|--------------|----------|------|-------------|
+| 0xDD  | Command | Status | Length | Data         | Checksum | 0x77 | Callback ID |
+
+---
+
+## 3. Command Explanation
+
+### 3.1 Basic Information 0x03 Command
+
+**Host Sends:**
+
+| Start | Read | Command | Length | Data | Checksum | Stop |
+|-------|------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5 | 0x03    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x03    | 0x00   | Length | Data | Checksum | 0x77 |
+
+**Example:**
+
+Host sends: `DD A5 03 00 FF FD 77`
+
+BMS responds: `DD 03 00 1B 17 00 00 00 02 D0 03 E8 00 00 20 78 00 00 00 00 00 00 10 48 03 0F 02 0B 76 0B 82 AA BB CC FB FF 77`
+
+---
+
+### 3.2 Cell Voltage 0x04 Command
+
+**Host Sends:**
+
+| Start | Read | Command | Length | Data | Checksum | Stop |
+|-------|------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5 | 0x04    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x04    | 0x00   | Length | Data | Checksum | 0x77 |
+
+**Example:**
+
+Host sends: `DD A5 04 00 FF FC 77`
+
+BMS responds: `DD 04 00 1E 0F 66 0F 63 0F 63 0F 64 0F 3E 0F 63 0F 37 0F 5B 0F 65 0F 3B 0F 63 0F 63 0F 3C 0F 66 0F 3D F9 F9 77`
+
+---
+
+### 3.3 Hardware Version 0x05 Command
+
+**Host Sends:**
+
+| Start | Read | Command | Length | Data | Checksum | Stop |
+|-------|------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5 | 0x05    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x05    | 0x00   | Length | Data | Checksum | 0x77 |
+
+**Example:**
+
+Host sends: `DD A5 05 00 FF FB 77`
+
+BMS responds: `DD 05 00 0A 30 31 32 33 34 35 36 37 38 39 FD E9 77`
+
+---
+
+### 3.4 Protection Statistics Count
+
+**Host Sends:**
+
+| Start | Read | Command | Length | Data | Checksum | Stop |
+|-------|------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5 | 0xAA    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0xAA    | 0x00   | Length | Data | Checksum | 0x77 |
+
+**Example:**
+
+Host sends: `DD A5 AA 00 FF 56 77`
+
+BMS responds: `DD AA 00 18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FF E8 77`
+
+---
+
+## 4. Control MOS Command (0xFB)
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0xFB    | 0x02   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0xFB    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+## 5. Parameter Read and Write Mode (0xFA)
+
+### 5.1 Read Parameters
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5   | 0xFA    | 0x03   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0xFA    | 0x00   | Length | Data | Checksum | 0x77 |
+
+---
+
+## 6. Control Command Explanation
+
+### 6.1 Control Command (0x0A Command)
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0x0A    | 0x02   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x0A    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+### 6.2 Clear Historical Data (0x0B Command)
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0x0B    | 0x02   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x0B    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+### 6.3 Enter Factory Password Command (0x0F Command, default is 0x5678)
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0x0F    | Length | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x0F    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+## 7. Add Battery Internal Resistance Command (0xF6) - Not Yet Implemented
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5   | 0xF6    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0xF6    | 0x00   | Length | Data | Checksum | 0x77 |
+
+---
+
+## 8. Bluetooth Password Protocol
+
+### 8.1 Password Pairing
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0x06    | 0x07   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x06    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+### 8.2 Password Change
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0x07    | 0x0D   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x07    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+## 9. Chip Type Read Command
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0xA5   | 0x00    | 0x00   | --   | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0x00    | 0x00   | 0x02   | Data | Checksum | 0x77 |
+
+---
+
+## 10. Control Heating Command (0xFC)
+
+**Host Sends:**
+
+| Start | Status | Command | Length | Data | Checksum | Stop |
+|-------|--------|---------|--------|------|----------|------|
+| 0xDD  | 0x5A   | 0xFC    | 0x05   | Data | Checksum | 0x77 |
+
+**BMS Response:**
+
+| Start | Command | Status | Length | Data | Checksum | Stop |
+|-------|---------|--------|--------|------|----------|------|
+| 0xDD  | 0xFC    | 0x00   | 0x00   | --   | Checksum | 0x77 |
+
+---
+
+## 11. Practical Example Analysis
+
+**Example 1: Reading Cell Voltage (0x04 Command)**
+
+Host sends: `DD A5 04 00 FF FC 77`
+
+BMS responds: `DD 04 00 1E 0F 66 0F 63 0F 63 0F 64 0F 3E 0F 63 0F 37 0F 5B 0F 65 0F 3B 0F 63 0F 63 0F 3C 0F 66 0F 3D F9 F9 77`
+
+---
+
+**Example 2: Reading Basic Information (0x03 Command)**
+
+Host sends: `DD A5 03 00 FF FD 77`
+
+BMS responds: `DD 03 00 1B 17 00 00 00 02 D0 03 E8 00 00 20 78 00 00 00 00 00 00 10 48 03 0F 02 0B 76 0B 82 AA BB CC FB FF 77`
+
+---
+
+## 12. Revision History
+
+| Version | Description |
+|---------|-------------|
+| V0      | Initial draft |
+| V1      | Modified 0xE1 command to 0xFB command |
+| V2      | Corrected errors and adjusted parameter list error types |
+| V3      | Added callback_id in the frame protocol format |
+| V4      | Added chip type reading and adjusted hardware overcurrent and short-circuit values |
+| V5      | Added heating control command (0xFC) and forced start function command |
+| V6      | Added discharge overcurrent and short-circuit value list for chip type 5 |
+| V7      | Optimized overcurrent value list for chip type 3 |
+| V8      | Added storage mode command in 0x0A control command |
+| V9      | Added current and capacity unit identification |
+| V10     | Added forced start button in 0x0A command for start mode |
+| V11     | Added discharge overcurrent and short-circuit value list for chip type 6 |
+| V12     | Added factory mode password modification command |
+
+---
+
+This document provides a comprehensive guide to the Jiabaida software board universal protocol, including command structures, examples, and revision history.
